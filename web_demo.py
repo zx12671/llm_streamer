@@ -4,7 +4,7 @@ from streamlit_chat import message
 import torch
 
 st.set_page_config(
-    page_title="ChatGLM-6b 演示",
+    page_title="LLM 演示",
     page_icon=":robot:"
 )
 
@@ -20,9 +20,7 @@ st.set_page_config(
 def get_model():
     # checkpoint = "LaMini-GPT-1.5B"  #LaMini-GPT-124m
     checkpoint = "C:/Users/xiangli/workspace/LaMini-GPT-1.5B/LaMini-GPT-124m"  # LaMini-GPT-124m
-
     tokenizer = AutoTokenizer.from_pretrained(f"{checkpoint}")
-
     model = AutoModelForCausalLM.from_pretrained(f"{checkpoint}")
     model = model.eval()
     return tokenizer, model
@@ -55,9 +53,6 @@ def chat( model, tokenizer, query: str, history = None, max_length: int = 2048, 
     response = tokenizer.decode(outputs, skip_special_tokens=False)
     history = history + [(query, response)]
     return response, history
-
-
-
 
 
 def predict(input, max_length, top_p, temperature, history=None):
