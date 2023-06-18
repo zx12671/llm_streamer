@@ -14,6 +14,8 @@ def get_model():
     return tokenizer, model
 
 tokenizer, model = get_model()
+model.config.pad_token_id = model.config.eos_token_id
+model.generation_config.pad_token_id = model.config.eos_token_id
 # model = pipeline('text-generation', model = model, tokenizer=tokenizer)
 
 instruction = 'Please explain the question: \n"the effect of vitamin C"'
@@ -21,10 +23,12 @@ instruction = 'Please explain the question: \n"the effect of vitamin C"'
 input_prompt = f"Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{instruction}\n\n### Response:"
 
 input_ids = tokenizer([input_prompt], return_tensors="pt",padding=True)
+outputs = model.generate(**input_ids, max_length=256, num_return_sequences=1)
+outputs = outputs.tolist()[0][len(input_ids["input_ids"][0]):]  # ref: modeling_chatglm.py chat
 
-output = model.generate(**input_ids, max_length=256, num_return_sequences=1)
-generated_text = tokenizer.decode(output[0], skip_special_tokens=False)
+generated_text = tokenizer.decode(outputs, skip_special_tokens=False)
 
-print("Response", output)
+
+
+print("Response", outputs)
 print("Response", generated_text)
-print("eos:"+str(output[0][-1]))

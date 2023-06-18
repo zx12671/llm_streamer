@@ -23,7 +23,9 @@ input_prompt = f"Below is an instruction that describes a task. Write a response
 input_ids = tokenizer.encode(input_prompt, return_tensors="pt")
 
 output = model.generate(input_ids, max_length=256, num_return_sequences=1)
-generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
+output = output[0][len(input_ids):]
+generated_text = tokenizer.decode(output, skip_special_tokens=True)
+
 
 print("Response", output)
 print("Response", generated_text)

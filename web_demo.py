@@ -1,7 +1,7 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer,TextStreamer
 import streamlit as st
 from streamlit_chat import message
-
+import torch
 
 st.set_page_config(
     page_title="ChatGLM-6b 演示",
@@ -27,15 +27,42 @@ def get_model():
     model = model.eval()
     return tokenizer, model
 
-
-MAX_TURNS = 20
+tokenizer, model = get_model()
+MAX_TURNS = 5
 MAX_BOXES = MAX_TURNS * 2
 
 
+@torch.no_grad()
+def chat( model, tokenizer, query: str, history = None, max_length: int = 2048, num_beams=1,
+         do_sample=True, top_p=0.7, temperature=0.95, logits_processor=None, **kwargs):
+    if history is None:
+        history = []
+    # # if logits_processor is None:
+    # #     logits_processor = LogitsProcessorList()
+    # # logits_processor.append(InvalidScoreLogitsProcessor())
+    # gen_kwargs = {"max_length": max_length, "num_beams": num_beams, "do_sample": do_sample, "top_p": top_p,
+    #               "temperature": temperature, "logits_processor": logits_processor, **kwargs}
+    if not history:
+        prompt = f"Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{query}\n\n### Response:"
+    else:
+        prompt = ""
+        for i, (old_query, response) in enumerate(history):
+            prompt += "[Round {}]\n问：{}\n答：{}\n".format(i, old_query, response)
+        prompt += "[Round {}]\n问：{}\n答：".format(len(history), query)
+    input_ids = tokenizer([prompt], return_tensors="pt", padding=True)
+    outputs = model.generate(**input_ids, max_length=256, num_return_sequences=1)
+    outputs = outputs.tolist()[0][len(input_ids["input_ids"][0]):]  # ref: modeling_chatglm.py chat
+    response = tokenizer.decode(outputs, skip_special_tokens=False)
+    history = history + [(query, response)]
+    return response, history
+
+
+
+
+
 def predict(input, max_length, top_p, temperature, history=None):
-    tokenizer, model = get_model()
-    streamer = TextStreamer(tokenizer)
-    inputs = tokenizer([input], return_tensors="pt", padding=True)
+    # streamer = TextStreamer(tokenizer)
+    # inputs = tokenizer([input], return_tensors="pt", padding=True)
     if history is None:
         history = []
 
@@ -53,8 +80,9 @@ def predict(input, max_length, top_p, temperature, history=None):
             # for response, history in model.stream_chat(tokenizer, input, history, max_length=max_length, top_p=top_p,
             #                                    temperature=temperature):
             #     query, response = history[-1]
-                st.write(model.generate(**inputs, streamer=streamer, max_new_tokens=200))
-
+                response, history = chat(model, tokenizer, input, history= history, max_length=max_length, top_p=top_p, temperature=temperature)
+                query, response = history[-1]
+                st.write(response)
     return history
 
 
